@@ -1,5 +1,5 @@
 import os
-from os.path import exists
+from os.path import existsx
 import torch
 import torch.nn as nn
 from torch.nn.functional import log_softmax, pad
