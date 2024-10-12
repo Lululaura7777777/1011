@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import math
 from utils import clones
+import torch.nn.functional as F
 from torch.nn.functional import log_softmax
 
 
