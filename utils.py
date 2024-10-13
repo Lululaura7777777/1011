@@ -91,6 +91,10 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
 
 def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, end_idx):
     memory = model.encode(src, src_mask)
+
+    # Expand the source mask to match the beam size
+    src_mask = src_mask.repeat(beam_size, 1, 1)  # Adjust dimensions to handle multiple beams
+
     ys = torch.ones(beam_size, 1).fill_(start_symbol).type_as(src.data)
     scores = torch.zeros(beam_size, 1).cuda()
 
@@ -117,8 +121,9 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         if (token_indices == end_idx).all():
             break
 
-    # Ensure that the return value is a sequence, not a scalar
+    # Return the top-scored sequence
     return ys[0] if ys.ndim > 1 else ys.unsqueeze(0)
+
 
 
         
