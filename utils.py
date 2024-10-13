@@ -90,43 +90,50 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
 
 
 def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, end_idx):
+    """
+    Beam search decoding with 'beam_size' width
+    """
+
+    # Encode source input using the model's encoder
     memory = model.encode(src, src_mask)
 
-    # Expand the source mask to match the beam size
-    src_mask = src_mask.repeat(beam_size, 1, 1)  # Adjust dimensions to handle multiple beams
-
-    ys = torch.ones(beam_size, 1).fill_(start_symbol).type_as(src.data)
-    scores = torch.zeros(beam_size, 1).cuda()
+    # Initialize the decoder input (ys) and scores for each beam
+    # Start with one beam, containing the start symbol
+    ys = torch.ones(beam_size, 1).fill_(start_symbol).long().cuda()  # [beam_size, 1]
+    scores = torch.zeros(beam_size, 1).cuda()  # Scores initialized to zero for each beam
 
     for i in range(max_len - 1):
+        # Decode the input using the model. It produces output for the current timestep.
         out = model.decode(memory, src_mask, ys, subsequent_mask(ys.size(1)).type_as(src.data))
-        prob = model.generator(out[:, -1])
-        vocab_size = prob.size(-1)
-        
-        # Update scores with log-probabilities
+
+        # Get the probabilities for the next token using the generator (output layer)
+        prob = model.generator(out[:, -1, :])  # Get the last time step's output
+
+        # Apply log to get log-probabilities for numerical stability
         log_prob = torch.log(prob)
-        # Expand scores to match log_prob's shape
-        scores = scores.expand_as(log_prob)
 
+        # Update scores by adding the log probabilities of each beam
+        scores = scores.expand_as(log_prob) + log_prob  # [beam_size, vocab_size]
 
-        scores = scores + log_prob
-        
-        # Get top-k scores and indices
-        scores, indices = scores.view(-1).topk(beam_size)
-        
-        # Extract beam and token indices from top-k scores
-        beam_indices = torch.div(indices, vocab_size, rounding_mode='floor')
-        token_indices = torch.remainder(indices, vocab_size)
-        
-        # Prepare the next decoder input
-        ys = torch.cat([ys[beam_indices], token_indices.unsqueeze(1)], dim=1)
+        # Get top beam_size scores and their corresponding indices (tokens)
+        top_scores, top_indices = scores.view(-1).topk(beam_size)  # Flattened to find best beams globally
 
-        # Check if all beams have reached the end token
+        # Extract beam indices and token indices from top-k scores
+        vocab_size = prob.size(-1)  # Get the size of the vocabulary
+        beam_indices = torch.div(top_indices, vocab_size, rounding_mode='floor')  # Get which beam they belong to
+        token_indices = torch.remainder(top_indices, vocab_size)  # Get the token from the vocabulary
+
+        # Prepare the next decoder input by appending the selected tokens to the corresponding beam sequences
+        ys = torch.cat([ys[beam_indices], token_indices.unsqueeze(1)], dim=1)  # Update ys with new tokens
+
+        # Check if all beams have reached the end token, exit if so
         if (token_indices == end_idx).all():
             break
 
     # Return the top-scored sequence
-    return ys[0] if ys.ndim > 1 else ys.unsqueeze(0)
+    # The best sequence will be the one corresponding to the first beam (top score)
+    return ys[0].tolist()  # Return the final sequence for the best beam
+
 
 
 
