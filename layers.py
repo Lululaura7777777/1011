@@ -77,8 +77,11 @@ def attention(query, key, value, mask=None, dropout=None):
 
     print("Scores shape: ", scores.shape)  # 打印出 scores 的维度
     if mask is not None:
-        print("Mask shape: ", mask.shape)  # 打印出 mask 的维度
+        if mask.size(-1) != scores.size(-1):
+            # Adjust the mask size to match the scores size
+            mask = mask[:, :, :, :scores.size(-1)]  # 裁剪 mask 以匹配 scores 的最后一个维度
         scores = scores.masked_fill(mask == 0, float('-inf'))
+
     
     attention_weights = F.softmax(scores, dim=-1)
     if dropout is not None:
