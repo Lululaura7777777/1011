@@ -74,7 +74,6 @@ class DecoderLayer(nn.Module):
 def attention(query, key, value, mask=None, dropout=None):
     d_k = query.size(-1)
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
-
     print("Scores shape: ", scores.shape)  # 打印出 scores 的维度
     if mask is not None:
         if mask.size(-1) != scores.size(-1):
