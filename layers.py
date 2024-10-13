@@ -72,22 +72,22 @@ class DecoderLayer(nn.Module):
     
     
 def attention(query, key, value, mask=None, dropout=None):
-    # Your code here
-    d_k = query.size(-1)  # Dimension of the key (or query) vectors
-    scores = torch.matmul(query, key.transpose(-2, -1)) / torch.sqrt(torch.tensor(d_k, dtype=torch.float32))
-    
-    if mask is not None:
-        mask = mask.unsqueeze(1) 
-        scores = scores.masked_fill(mask == 0, float('-inf'))
+    d_k = query.size(-1)
+    scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
 
-    attention_weights = F.softmax(scores, dim=-1)
+    print("Scores shape: ", scores.shape)  # 打印出 scores 的维度
+    if mask is not None:
+        print("Mask shape: ", mask.shape)  # 打印出 mask 的维度
+        scores = scores.masked_fill(mask == 0, float('-inf'))
     
+    attention_weights = F.softmax(scores, dim=-1)
     if dropout is not None:
         attention_weights = dropout(attention_weights)
     
     output = torch.matmul(attention_weights, value)
     
     return output, attention_weights
+
 
 class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, dropout=0.1):
