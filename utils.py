@@ -105,6 +105,10 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         
         # Update scores with log-probabilities
         log_prob = torch.log(prob)
+        # Expand scores to match log_prob's shape
+        scores = scores.expand_as(log_prob)
+
+
         scores = scores + log_prob
         
         # Get top-k scores and indices
