@@ -127,9 +127,12 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         # Get the last token's log probabilities for all beams
         prob = model.generator(out[:, -1])  # Shape: (beam_size, vocab_size)
 
+        # If this is the first iteration, expand the scores to match the beam size
+        if i == 0:
+            scores = scores.expand(beam_size, 1)
+
         # Add the previous scores to the current token log-probabilities
         # Expand scores to match the shape of prob (beam_size x vocab_size)
-        print("prob & scores:", prob.shape, scores.shape)
         prob = prob + scores.view(beam_size, 1)
 
         # Flatten prob to get the top k token probabilities across all beams
