@@ -76,6 +76,7 @@ def attention(query, key, value, mask=None, dropout=None):
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
     
     if mask is not None:
+        mask = mask.unsqueeze(1).unsqueeze(2) 
         scores = scores.masked_fill(mask == 0, float('-inf'))
 
     attention_weights = F.softmax(scores, dim=-1)
