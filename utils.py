@@ -91,48 +91,38 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
 
 def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, end_idx):
     """
-    Implement beam search decoding with 'beam_size' width.
-    
-    Args:
-        model: The trained model that can perform encoding and decoding.
-        src: The source input to the model (e.g., input sequence).
-        src_mask: The source mask to apply during encoding and decoding.
-        max_len: The maximum length of the decoded sequence.
-        start_symbol: The index of the start symbol in the vocabulary.
-        beam_size: The number of beams to consider at each step.
-        end_idx: The index of the end symbol in the vocabulary.
-    
-    Returns:
-        The top-scored sequence decoded by beam search.
+    Beam search decoding with 'beam_size' width.
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Encode the source input using the model
-    memory = model.encode(src, src_mask)
+    # Encode the source input using the model, ensuring everything is on the GPU
+    src = src.to(device)
+    src_mask = src_mask.to(device)
+    memory = model.encode(src, src_mask).to(device)
 
-    # Initialize decoder input with the start symbol, and scores for the beams
-    ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).cuda()  # initial input <start>
-    scores = torch.zeros(1, 1).cuda()  # Initial score is zero for the start sequence
+    # Initialize decoder input with the start symbol and place on GPU
+    ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
+    scores = torch.zeros(1).to(device)  # Initialize score for the first sequence
 
     # Prepare memory for beam_size; expand memory to match beam_size
     memory = memory.expand(beam_size, -1, -1)
 
     finished = [False] * beam_size
-    sequences = [ys for _ in range(beam_size)]
+    sequences = [ys.clone() for _ in range(beam_size)]  # Clone to avoid reference issues
 
     for i in range(max_len - 1):
-        # Decode using the model, memory, and source mask
-        # The `ys` contains the current sequence for each beam
-        out = model.decode(memory, src_mask, torch.cat(sequences, dim=0), None)
+        # Concatenate sequences for each beam, ensuring they are on the GPU
+        tgt_mask = subsequent_mask(ys.size(1)).type_as(src.data).to(device)
+        out = model.decode(memory, src_mask, torch.cat(sequences, dim=0).to(device), tgt_mask)
 
         # Get the last token's log probabilities for all beams
-        prob = model.generator(out[:, -1])  # Shape: (beam_size, vocab_size)
+        prob = model.generator(out[:, -1]).to(device)  # Ensure output is on the GPU
 
-        # If this is the first iteration, expand the scores to match the beam size
+        # Expand scores during the first iteration to match the number of beams
         if i == 0:
-            scores = scores.expand(beam_size, 1)
+            scores = scores.expand(beam_size).to(device)
 
         # Add the previous scores to the current token log-probabilities
-        # Expand scores to match the shape of prob (beam_size x vocab_size)
         prob = prob + scores.view(beam_size, 1)
 
         # Flatten prob to get the top k token probabilities across all beams
@@ -148,7 +138,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         next_scores = []
 
         for beam_idx, token_idx, score in zip(beam_indices, token_indices, topk_scores):
-            seq = torch.cat([sequences[beam_idx], token_idx.view(1, 1)], dim=1)
+            seq = torch.cat([sequences[beam_idx], token_idx.view(1, 1)], dim=1).to(device)
             next_sequences.append(seq)
             next_scores.append(score)
 
@@ -157,7 +147,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
                 finished[beam_idx] = True
 
         sequences = next_sequences
-        scores = torch.stack(next_scores)
+        scores = torch.stack(next_scores).to(device)
 
         # If all beams are finished, stop the search early
         if all(finished):
@@ -167,6 +157,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     best_sequence = sequences[scores.argmax().item()].squeeze(0).tolist()
 
     return best_sequence
+
 
 
 def collate_batch(
