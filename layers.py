@@ -72,23 +72,31 @@ class DecoderLayer(nn.Module):
     
     
 def attention(query, key, value, mask=None, dropout=None):
-    d_k = query.size(-1)
+    d_k = query.size(-1)  # 获取 key 或 query 向量的维度
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
-    print("Scores shape: ", scores.shape)  # 打印出 scores 的维度
+    
+    print(f"Scores shape: {scores.shape}")  # 检查 scores 的形状
+    
     if mask is not None:
-        if mask.size(-1) != scores.size(-1):
-            # Adjust the mask size to match the scores size
-            mask = mask[:, :, :, :scores.size(-1)]  # 裁剪 mask 以匹配 scores 的最后一个维度
+        # 检查 mask 的初始形状
+        print(f"Mask shape before unsqueeze: {mask.shape}")
+        # mask 扩展维度
+        mask = mask.unsqueeze(1).unsqueeze(2)
+        print(f"Mask shape after unsqueeze: {mask.shape}")
+        # mask 扩展为与 scores 一致的形状
+        mask = mask.expand_as(scores)
+        print(f"Mask shape after expand_as: {mask.shape}")
         scores = scores.masked_fill(mask == 0, float('-inf'))
 
-    
     attention_weights = F.softmax(scores, dim=-1)
+    
     if dropout is not None:
         attention_weights = dropout(attention_weights)
     
     output = torch.matmul(attention_weights, value)
     
     return output, attention_weights
+
 
 
 class MultiHeadedAttention(nn.Module):
