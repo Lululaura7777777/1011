@@ -92,6 +92,7 @@ def attention(query, key, value, mask=None, dropout=None):
     
     print(f"attention_weights shape: {attention_weights.shape}")
     print(f"value shape: {value.shape}")
+    assert attention_weights.size(-1) == value.size(-2)
     output = torch.matmul(attention_weights, value)
     return output, attention_weights
 
