@@ -156,7 +156,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     # Return the sequence with the highest score
     best_sequence = sequences[scores.argmax().item()].squeeze(0).tolist()
 
-    return best_sequence
+    return [best_sequence]
 
 
 
