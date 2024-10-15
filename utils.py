@@ -93,6 +93,9 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     """
     Beam search decoding with 'beam_size' width.
     """
+    if beam_size == 1:
+        return greedy_decode(model, src, src_mask, max_len, start_symbol)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Encode the source input using the model, ensuring everything is on the GPU
