@@ -74,7 +74,7 @@ class DecoderLayer(nn.Module):
 def attention(query, key, value, mask=None, dropout=None):
     d_k = query.size(-1)  # Dimension of key/query vectors
     # Perform scaled dot-product attention
-    scores = torch.matmul(query, key.transpose(-1, -2)) / math.sqrt(d_k)
+    scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
 
     # Apply the mask if present
     if mask is not None:
