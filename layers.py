@@ -78,7 +78,7 @@ def attention(query, key, value, mask=None, dropout=None):
     if mask is not None and mask.dim() == 3:
         mask = mask.unsqueeze(1)
     if mask is not None and mask.dim() == 2:
-        mask = mask.unsqueeze(2)
+        mask = mask.unsqueeze(1).unsqueeze(2)
 
     if mask is not None:
         mask = mask.bool()
@@ -117,6 +117,8 @@ class MultiHeadedAttention(nn.Module):
         if mask is not None and mask.dim() == 3:
             # Same mask applied to all heads
             mask = mask.unsqueeze(1)
+        if mask is not None and mask.dim() == 2:
+            mask = mask.unsqueeze(1).unsqueeze(2)
         
         batch_size = query.size(0)
         
