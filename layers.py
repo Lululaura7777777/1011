@@ -75,14 +75,14 @@ def attention(query, key, value, mask=None, dropout=None):
     d_k = query.size(-1)  # Dimension of key/query vectors
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
 
-    if mask is not None and mask.dim() == 3:
-        mask = mask.unsqueeze(1)
-    if mask is not None and mask.dim() == 2:
-        mask = mask.unsqueeze(1).unsqueeze(2)
-
     if mask is not None:
-        mask = mask.bool()
-        scores = scores.masked_fill(mask == 0, float('-inf'))
+        if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
+            mask = mask.unsqueeze(1).unsqueeze(2)
+        elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
+            mask = mask.unsqueeze(1)
+        
+        mask = mask.bool()  # Ensure mask is boolean
+        scores = scores.masked_fill(mask == 0, float('-inf'))  # Apply mask
 
     attention_weights = F.softmax(scores, dim=-1)
     
