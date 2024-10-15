@@ -73,29 +73,29 @@ class DecoderLayer(nn.Module):
     
 def attention(query, key, value, mask=None, dropout=None):
     d_k = query.size(-1)  # Dimension of key/query vectors
-    scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
+    # Perform scaled dot-product attention
+    scores = torch.matmul(query, key.transpose(-1, -2)) / math.sqrt(d_k)
 
+    # Apply the mask if present
     if mask is not None:
-        if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
-            mask = mask.unsqueeze(1).unsqueeze(2)
-        elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
-            mask = mask.unsqueeze(1)
-        
-        mask = mask.expand(-1, query.size(1), -1, -1) 
-        mask = mask.bool()  # Ensure mask is boolean
-        scores = scores.masked_fill(mask == 0, float('-inf')) 
+        mask = mask.unsqueeze(1) if mask.dim() == 3 else mask.unsqueeze(1).unsqueeze(2)
+        scores = scores.masked_fill(mask == 0, float('-inf'))  # Mask padded values
 
+    # Softmax and attention weights
     attention_weights = F.softmax(scores, dim=-1)
-    
+
+    # Apply dropout, if provided
     if dropout is not None:
         attention_weights = dropout(attention_weights)
-    
+
     print(f"attention_weights shape: {attention_weights.shape}")
     print(f"value shape: {value.shape}")
-    assert attention_weights.size(-1) == value.size(-2)
+
+    assert attention_weights.size(-1) == value.size(-2), "Mismatch in dimensions"
+    
+    # Final matrix multiplication with the value vector
     output = torch.matmul(attention_weights, value)
     return output, attention_weights
-
 
 
 
