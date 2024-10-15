@@ -81,8 +81,8 @@ def attention(query, key, value, mask=None, dropout=None):
         elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
             mask = mask.unsqueeze(1)
         
-        mask = mask.bool()  # Ensure mask is boolean
         mask = mask.expand(-1, query.size(1), -1, -1) 
+        mask = mask.bool()  # Ensure mask is boolean
         scores = scores.masked_fill(mask == 0, float('-inf')) 
 
     attention_weights = F.softmax(scores, dim=-1)
