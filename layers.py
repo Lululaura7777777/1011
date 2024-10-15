@@ -125,7 +125,7 @@ class MultiHeadedAttention(nn.Module):
             mask = mask.expand(-1, self.h, -1, -1)  # Expand mask to apply over heads
 
         # Compute attention
-        context, attn = attention(q_s, k_s, v_s, mask=mask, dropout=self.dropout)
+        context, attention_weights = attention(q_s, k_s, v_s, mask=mask, dropout=self.dropout)
 
         # Concatenate the heads and apply the final linear layer
         context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
