@@ -123,15 +123,16 @@ if __name__ == "__main__":
     parser.add_argument("--multiheaded_attention", action="store_true", help="unit test for mulitheaded attn")
     parser.add_argument("--positional_encoding", action="store_true", help="unit test for positional encoding")
     parser.add_argument("--beam_search", action="store_true", help="unit tests for beam search")
+    parser.add_argument("--beam_size", type=int, default=1, help="Beam size for beam search decoding")
     
     args = parser.parse_args()
-    
+   
     # Set seed
     torch.manual_seed(0)
     torch.cuda.manual_seed_all(0)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-    
+    beam_size = args.beam_size
     if args.attention:
         test_attention()
         
