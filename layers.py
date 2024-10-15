@@ -74,9 +74,11 @@ class DecoderLayer(nn.Module):
 def attention(query, key, value, mask=None, dropout=None):
     d_k = query.size(-1)  # Dimension of key/query vectors
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
-    
+
+    if mask is not None and mask.dim() == 3:
+        mask = mask.unsqueeze(1)
+
     if mask is not None:
-        mask = mask.unsqueeze(1) 
         mask = mask.bool()
         scores = scores.masked_fill(mask == 0, float('-inf'))
 
@@ -109,7 +111,8 @@ class MultiHeadedAttention(nn.Module):
         
     def forward(self, query, key, value, mask=None):
         # Your code here
-        if mask is not None:
+        
+        if mask is not None and mask.dim() == 3:
             # Same mask applied to all heads
             mask = mask.unsqueeze(1)
         
