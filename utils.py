@@ -98,45 +98,42 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Encode the source input using the model, ensuring everything is on the GPU
+    # Encode the source input using the model
     src = src.to(device)
     src_mask = src_mask.to(device)
     memory = model.encode(src, src_mask).to(device)
 
-    # Initialize decoder input with the start symbol and place on GPU
-    ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
-    scores = torch.zeros(1).to(device)  # Initialize score for the first sequence
+    # Initialize decoder input with the start symbol for all beams
+    ys = torch.ones(beam_size, 1).fill_(start_symbol).type(torch.long).to(device)
+    scores = torch.zeros(beam_size).to(device)  # Scores for all beams
 
-    # Prepare memory for beam_size; expand memory to match beam_size
-    memory = memory.expand(beam_size, -1, -1)
+    memory = memory.expand(beam_size, -1, -1)  # Expand memory for all beams
 
-    finished = [False] * beam_size
-    sequences = [ys.clone() for _ in range(beam_size)]  # Clone to avoid reference issues
+    finished = [False] * beam_size  # Track finished beams
+    sequences = [ys.clone() for _ in range(beam_size)]  # Sequences for each beam
 
     for i in range(max_len - 1):
-        # Concatenate sequences for each beam, ensuring they are on the GPU
         tgt_mask = subsequent_mask(ys.size(1)).type_as(src.data).to(device)
         out = model.decode(memory, src_mask, torch.cat(sequences, dim=0).to(device), tgt_mask)
 
-        # Get the last token's log probabilities for all beams
-        prob = model.generator(out[:, -1]).to(device)  # Ensure output is on the GPU
+        # Get probabilities for the last token in each beam sequence
+        prob = model.generator(out[:, -1]).to(device)
 
-        # Expand scores during the first iteration to match the number of beams
         if i == 0:
             scores = scores.expand(beam_size).to(device)
 
         # Add the previous scores to the current token log-probabilities
         prob = prob + scores.view(beam_size, 1)
 
-        # Flatten prob to get the top k token probabilities across all beams
+        # Flatten prob to get top k token probabilities across all beams
         vocab_size = prob.size(-1)
         topk_scores, topk_indices = torch.topk(prob.view(-1), beam_size)
 
-        # Extract beam indices and token indices from top-k scores
+        # Extract beam indices and token indices
         beam_indices = torch.div(topk_indices, vocab_size, rounding_mode='floor')
         token_indices = topk_indices % vocab_size
 
-        # Update sequences and scores for the next step
+        # Update sequences and scores
         next_sequences = []
         next_scores = []
 
@@ -145,21 +142,21 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
             next_sequences.append(seq)
             next_scores.append(score)
 
-            # If the token is an end token, mark the beam as finished
+            # Mark the beam as finished if the end token is generated
             if token_idx.item() == end_idx:
                 finished[beam_idx] = True
 
         sequences = next_sequences
         scores = torch.stack(next_scores).to(device)
 
-        # If all beams are finished, stop the search early
-        if all(finished):
+        if all(finished):  # Stop if all beams have finished
             break
 
-    # Return the sequence with the highest score
+    # Return the best sequence (with the highest score)
     best_sequence = sequences[scores.argmax().item()].squeeze(0).tolist()
 
-    return [best_sequence]
+    return best_sequence
+
 
 
 
