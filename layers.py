@@ -77,6 +77,8 @@ def attention(query, key, value, mask=None, dropout=None):
 
     if mask is not None and mask.dim() == 3:
         mask = mask.unsqueeze(1)
+    if mask is not None and mask.dim() == 2:
+        mask = mask.unsqueeze(2)
 
     if mask is not None:
         mask = mask.bool()
