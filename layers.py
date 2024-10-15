@@ -101,40 +101,45 @@ def attention(query, key, value, mask=None, dropout=None):
 
 class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, dropout=0.1):
-        # Your code here
         super(MultiHeadedAttention, self).__init__()
-        assert d_model % h == 0  # Ensure that d_model is divisible by the number of heads
+        assert d_model % h == 0  # Ensure d_model is divisible by number of heads
 
-        # d_k is the dimension of the key, query, and value vectors for each head
+        # d_k is the dimension for each head
         self.d_k = d_model // h
         self.h = h
-        self.linears = clones(nn.Linear(d_model, d_model), 4)  # Four linear layers (Q, K, V, and final linear)
-        self.attn = None
+        
+        # Define separate linear transformations for Q, K, V
+        self.W_Q = nn.Linear(d_model, d_model)
+        self.W_K = nn.Linear(d_model, d_model)
+        self.W_V = nn.Linear(d_model, d_model)
+        self.linear = nn.Linear(d_model, d_model)  # Final linear layer
         self.dropout = nn.Dropout(p=dropout)
         
     def forward(self, query, key, value, mask=None):
-        # Your code here
-        
+        batch_size = query.size(0)
+
+        # Apply the linear transformations to project Q, K, V
+        q_s = self.W_Q(query).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        k_s = self.W_K(key).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        v_s = self.W_V(value).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+
+        # Apply mask if available
         if mask is not None:
             if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
                 mask = mask.unsqueeze(1).unsqueeze(2)
             elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
                 mask = mask.unsqueeze(1)
+            mask = mask.expand(-1, self.h, -1, -1)  # Expand mask to apply over heads
+
+        # Compute attention
+        context, attn = attention(q_s, k_s, v_s, mask=mask, dropout=self.dropout)
+
+        # Concatenate the heads and apply the final linear layer
+        context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
+        output = self.linear(context)
         
-        batch_size = query.size(0)
-        
-        # 1) Apply linear projection to Q, K, and V and split into h heads
-        query, key, value = [
-            l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-            for l, x in zip(self.linears, (query, key, value))
-        ]
-        
-        # 2) Apply attention on all the projected vectors in parallel
-        x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
-        
-        # 3) Concatenate the attention heads and apply a final linear layer
-        x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
-        return self.linears[-1](x)
+        return output
+
     
     
     
