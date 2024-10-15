@@ -82,7 +82,7 @@ def attention(query, key, value, mask=None, dropout=None):
             mask = mask.unsqueeze(1)
         
         mask = mask.bool()  # Ensure mask is boolean
-        scores = scores.masked_fill(mask == 0, float('-inf'))  # Apply mask
+        scores = scores.masked_fill(mask == 0, float('-inf')) 
 
     attention_weights = F.softmax(scores, dim=-1)
     
@@ -115,10 +115,10 @@ class MultiHeadedAttention(nn.Module):
         # Your code here
         
         if mask is not None:
-        if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
-            mask = mask.unsqueeze(1).unsqueeze(2)
-        elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
-            mask = mask.unsqueeze(1)
+            if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
+                mask = mask.unsqueeze(1).unsqueeze(2)
+            elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
+                mask = mask.unsqueeze(1)
         
         batch_size = query.size(0)
         
