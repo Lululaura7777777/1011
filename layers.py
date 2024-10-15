@@ -84,6 +84,9 @@ def attention(query, key, value, mask=None, dropout=None):
     if dropout is not None:
         attention_weights = dropout(attention_weights)
     
+    print(f"attention_weights shape: {attention_weights.shape}")
+    print(f"value shape: {value.shape}")
+
     output = torch.matmul(attention_weights, value)
     return output, attention_weights
 
