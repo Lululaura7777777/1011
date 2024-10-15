@@ -543,6 +543,7 @@ if __name__ == "__main__":
     _, results, score = run_model_eval(args.beam_search, args.beam_size, verbose=True)
     
     print("Bleu Score: ", score)
+    print(f"Beam size {beam_size}: BLEU score = {bleu_score}")
     
     
     
