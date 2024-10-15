@@ -78,7 +78,6 @@ def attention(query, key, value, mask=None, dropout=None):
 
     # Apply the mask if present
     if mask is not None:
-        mask = mask.unsqueeze(1) if mask.dim() == 3 else mask.unsqueeze(1).unsqueeze(2)
         scores = scores.masked_fill(mask == 0, float('-inf'))  # Mask padded values
 
     # Softmax and attention weights
@@ -90,8 +89,6 @@ def attention(query, key, value, mask=None, dropout=None):
 
     print(f"attention_weights shape: {attention_weights.shape}")
     print(f"value shape: {value.shape}")
-
-    assert attention_weights.size(-1) == value.size(-2), "Mismatch in dimensions"
     
     # Final matrix multiplication with the value vector
     output = torch.matmul(attention_weights, value)
@@ -125,10 +122,6 @@ class MultiHeadedAttention(nn.Module):
 
         # Apply mask if available
         if mask is not None:
-            if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
-                mask = mask.unsqueeze(1).unsqueeze(2)
-            elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
-                mask = mask.unsqueeze(1)
             mask = mask.expand(-1, self.h, -1, -1)  # Expand mask to apply over heads
 
         # Compute attention
