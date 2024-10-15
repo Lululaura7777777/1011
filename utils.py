@@ -93,9 +93,6 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     """
     Beam search decoding with 'beam_size' width.
     """
-    if beam_size == 1:
-        return greedy_decode(model, src, src_mask, max_len, start_symbol)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Encode the source input using the model
@@ -107,9 +104,10 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     ys = torch.ones(beam_size, 1).fill_(start_symbol).type(torch.long).to(device)
     scores = torch.zeros(beam_size).to(device)  # Scores for all beams
 
-    memory = memory.expand(beam_size, -1, -1)  # Expand memory for all beams
+    # Prepare memory for beam_size; expand memory to match beam_size
+    memory = memory.expand(beam_size, -1, -1)
 
-    finished = [False] * beam_size  # Track finished beams
+    finished = [False] * beam_size
     sequences = [ys.clone() for _ in range(beam_size)]  # Sequences for each beam
 
     for i in range(max_len - 1):
@@ -119,6 +117,13 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         # Get probabilities for the last token in each beam sequence
         prob = model.generator(out[:, -1]).to(device)
 
+        if beam_size == 1:  # If beam_size is 1, act like greedy decoding
+            _, next_word = torch.max(prob, dim=1)
+            next_word = next_word.data[0].item()
+            ys = torch.cat([ys, torch.ones(1, 1).type_as(ys).fill_(next_word)], dim=1)
+            continue
+
+        # Expand scores during the first iteration to match the number of beams
         if i == 0:
             scores = scores.expand(beam_size).to(device)
 
@@ -152,10 +157,11 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         if all(finished):  # Stop if all beams have finished
             break
 
-    # Return the best sequence (with the highest score)
+    # Return the sequence with the highest score
     best_sequence = sequences[scores.argmax().item()].squeeze(0).tolist()
 
     return best_sequence
+
 
 
 
