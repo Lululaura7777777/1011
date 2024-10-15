@@ -114,11 +114,11 @@ class MultiHeadedAttention(nn.Module):
     def forward(self, query, key, value, mask=None):
         # Your code here
         
-        if mask is not None and mask.dim() == 3:
-            # Same mask applied to all heads
-            mask = mask.unsqueeze(1)
-        if mask is not None and mask.dim() == 2:
+        if mask is not None:
+        if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
             mask = mask.unsqueeze(1).unsqueeze(2)
+        elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
+            mask = mask.unsqueeze(1)
         
         batch_size = query.size(0)
         
