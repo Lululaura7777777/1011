@@ -78,7 +78,9 @@ def attention(query, key, value, mask=None, dropout=None):
 
     # Apply the mask if present
     if mask is not None:
-        if mask.dim() == 2:  # If 2D (batch, seq_len), add an extra dimension
+        if mask.dim() == 2:
+            mask = mask.unsqueeze(1).unsqueeze(2)  # Expand for attention mechanism
+        elif mask.dim() == 3:
             mask = mask.unsqueeze(1)
         scores = scores.masked_fill(mask == 0, -1e9)  # Mask padded values
 
@@ -131,7 +133,8 @@ class MultiHeadedAttention(nn.Module):
 
         # Concatenate heads and apply the final linear layer
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_v)
-        return self.linears[-1](x)
+        return self.final_linear(x)
+
 
 
 
