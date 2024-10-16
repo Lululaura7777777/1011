@@ -131,7 +131,7 @@ class MultiHeadedAttention(nn.Module):
 
         # Concatenate heads and apply the final linear layer
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_v)
-        return self.final_linear(x)
+        return self.linears[-1](x)
 
 
 
