@@ -118,20 +118,22 @@ class MultiHeadedAttention(nn.Module):
         
         batch_size = query.size(0)
         
-        # 1) Project Q, K, V and split into heads
-        query = self.W_Q(query).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-        key = self.W_K(key).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-        value = self.W_V(value).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        # 1) Apply linear projection to Q, K, and V and split into h heads
+        query_proj = self.W_Q(query).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        key_proj = self.W_K(key).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        value_proj = self.W_V(value).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
         
         # 2) Apply attention on all the projected vectors in parallel
-        x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
+        x, self.attn = attention(query_proj, key_proj, value_proj, mask=mask, dropout=self.dropout)
         
-        # 3) Concatenate heads and apply the final linear layer
+        # 3) Concatenate the attention heads and apply the final linear layer
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
         output = self.final_linear(x)
         
-        # 4) Apply residual connection and normalization
-        return self.norm(output + query)  # Residual connection: adding input query
+        # 4) Residual connection: Match the shape of query and output
+        residual_query = self.W_Q(query)  # Project query to match output's dimension
+        return self.norm(output + residual_query)  # Add residual connection and apply normalization
+
 
     
     
