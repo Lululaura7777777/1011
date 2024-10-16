@@ -75,14 +75,11 @@ def attention(query, key, value, mask=None, dropout=None):
     d_k = query.size(-1)  # Dimension of key/query vectors
     # Perform scaled dot-product attention
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
-    print(f"Scores before masking: {scores}")
     # Apply the mask if present
     if mask is not None:
         if mask.dim() == 2:
             mask = mask.unsqueeze(1)
-        print(f"Mask shape: {mask.shape}")
         scores = scores.masked_fill(mask == 0, -1e9)
-        print(f"Scores after masking: {scores}")
          # Mask padded values
 
     # Softmax and attention weights
