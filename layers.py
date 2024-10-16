@@ -73,64 +73,64 @@ class DecoderLayer(nn.Module):
     
 def attention(query, key, value, mask=None, dropout=None):
     d_k = query.size(-1)  # Dimension of key/query vectors
-    # Perform scaled dot-product attention
+    # Scaled dot-product attention
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
 
-    # Apply the mask if present
+    # Apply mask if present
     if mask is not None:
-        if mask.dim() == 2:  # If 2D (batch, seq_len), add an extra dimension
-            mask = mask.unsqueeze(1)
-        scores = scores.masked_fill(mask == 0, -1e9)  # Mask padded values
+        scores = scores.masked_fill(mask == 0, -1e9)
 
-    # Softmax and attention weights
+    # Softmax to get attention weights
     attention_weights = F.softmax(scores, dim=-1)
 
-    # Apply dropout, if provided
+    # Apply dropout if provided
     if dropout is not None:
         attention_weights = dropout(attention_weights)
-    
-    # Final matrix multiplication with the value vector
+
+    # Compute the output as attention weights times value
     output = torch.matmul(attention_weights, value)
     return output, attention_weights
 
 
-
 class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, dropout=0.1):
-        # Your code here
         super(MultiHeadedAttention, self).__init__()
-        assert d_model % h == 0  # Ensure that d_model is divisible by the number of heads
+        assert d_model % h == 0  # Ensure d_model is divisible by h
 
-        # d_k is the dimension of the key, query, and value vectors for each head
+        # Define dimensions for key, query, and value vectors
         self.d_k = d_model // h
         self.h = h
-        self.linears = clones(nn.Linear(d_model, d_model), 4)  # Four linear layers (Q, K, V, and final linear)
-        self.attn = None
+        
+        # Define linear transformations for Q, K, V
+        self.W_Q = nn.Linear(d_model, d_model)
+        self.W_K = nn.Linear(d_model, d_model)
+        self.W_V = nn.Linear(d_model, d_model)
+        
+        # Final output linear layer
+        self.final_linear = nn.Linear(d_model, d_model)
+        
+        # Layer normalization and dropout
+        self.layer_norm = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(p=dropout)
-    
+
     def forward(self, query, key, value, mask=None):
-        # Your code here
-        
-        if mask is not None:
-            if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
-                mask = mask.unsqueeze(1).unsqueeze(2)
-            elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
-                mask = mask.unsqueeze(1)
-        
         batch_size = query.size(0)
-        
-        # 1) Apply linear projection to Q, K, and V and split into h heads
-        query, key, value = [
-            l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-            for l, x in zip(self.linears, (query, key, value))
-        ]
-        
-        # 2) Apply attention on all the projected vectors in parallel
-        x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
-        
-        # 3) Concatenate the attention heads and apply a final linear layer
-        x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
-        return self.linears[-1](x)
+
+        # Linear projections and reshaping for multi-head attention
+        q_s = self.W_Q(query).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        k_s = self.W_K(key).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        v_s = self.W_V(value).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+
+        # Apply scaled dot-product attention
+        context, attn = attention(q_s, k_s, v_s, mask=mask, dropout=self.dropout)
+
+        # Concatenate heads and apply final linear layer
+        context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
+        output = self.final_linear(context)
+
+        # Residual connection and normalization
+        return self.layer_norm(output + query), attn
+
 
 
     
