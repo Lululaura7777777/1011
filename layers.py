@@ -127,7 +127,7 @@ class MultiHeadedAttention(nn.Module):
         context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_v)
         output = self.linear(context)
         
-        return output, attn
+        return output
 
 
     
