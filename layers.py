@@ -98,38 +98,44 @@ def attention(query, key, value, mask=None, dropout=None):
 class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, d_v=None, dropout=0.1):
         super(MultiHeadedAttention, self).__init__()
-        assert d_model % h == 0  # Ensure that d_model is divisible by the number of heads
+        assert d_model % h == 0  # Ensure d_model is divisible by number of heads
 
-        # d_k is the dimension for key and query vectors, d_v for value vectors
+        # d_k is for keys/queries, d_v for values (optional)
         self.d_k = d_model // h
-        self.d_v = d_v if d_v else self.d_k  # If d_v is not provided, default to d_k
+        self.d_v = d_v if d_v else self.d_k  # If d_v is not provided, use d_k
         self.h = h
-        
-        # Define the projection layers for Q, K, V and the final linear layer
+
+        # Linear layers for Q, K, V
         self.W_Q = nn.Linear(d_model, d_model)
         self.W_K = nn.Linear(d_model, d_model)
-        self.W_V = nn.Linear(d_model, self.d_v * h)  # Use d_v for value projection
+        self.W_V = nn.Linear(d_model, self.d_v * h)  # Project values to d_v for all heads
         self.linear = nn.Linear(self.d_v * h, d_model)
         self.dropout = nn.Dropout(p=dropout)
+
+        # Layer normalization for residual connection
+        self.layer_norm = nn.LayerNorm(d_model)
 
     def forward(self, Q, K, V, attn_mask=None):
         batch_size = Q.size(0)
 
-        # Project Q, K, V and reshape for multi-head attention
+        # Apply linear projections and reshape for multiple heads
         q_s = self.W_Q(Q).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
         k_s = self.W_K(K).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-        v_s = self.W_V(V).view(batch_size, -1, self.h, self.d_v).transpose(1, 2)  # Project values to d_v
+        v_s = self.W_V(V).view(batch_size, -1, self.h, self.d_v).transpose(1, 2)
 
-        # Apply scaled dot-product attention
+        # Apply scaled dot-product attention (get context and attention)
         context, attention_weights = attention(q_s, k_s, v_s, attn_mask)
 
-        # Save the attention weights for later use
+        # Concatenate attention heads and apply final linear projection
+        context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_v)
+        output = self.linear(context)  # Final projection to d_model
+
+        # Residual connection and normalization
+        output = self.layer_norm(output + Q)  # Add the input (residual) and normalize
+
+        # Save attention weights for inspection later
         self.attn = attention_weights
 
-        # Concatenate heads and apply the final linear projection
-        context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_v)
-        output = self.linear(context)
-        
         return output
 
 
