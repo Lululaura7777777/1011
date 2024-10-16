@@ -98,36 +98,37 @@ def attention(query, key, value, mask=None, dropout=None):
 class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, dropout=0.1):
         super(MultiHeadedAttention, self).__init__()
-        assert d_model % h == 0  # Ensure that d_model is divisible by the number of heads
+        assert d_model % h == 0
 
-        # d_k is the dimension of the key, query, and value vectors for each head
         self.d_k = d_model // h
         self.h = h
-        self.linears = clones(nn.Linear(d_model, d_model), 4)  # Use 4 linear layers (Q, K, V, and final)
-        self.attn = None
+        self.W_Q = nn.Linear(d_model, d_model)
+        self.W_K = nn.Linear(d_model, d_model)
+        self.W_V = nn.Linear(d_model, d_model)
+        self.final_linear = nn.Linear(d_model, d_model)  # Final linear layer
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, query, key, value, mask=None):
         if mask is not None:
-            if mask.dim() == 2:  # If mask is 2D (batch, seq_len), make it 4D
+            if mask.dim() == 2:  # If mask is 2D, make it 4D
                 mask = mask.unsqueeze(1).unsqueeze(2)
             elif mask.dim() == 3:  # If mask is 3D, add an extra dimension for heads
                 mask = mask.unsqueeze(1)
         
         batch_size = query.size(0)
         
-        # 1) Apply linear projection to Q, K, and V and split into h heads
-        query, key, value = [
-            l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
-            for l, x in zip(self.linears, (query, key, value))
-        ]
+        # 1) Project Q, K, V and split into heads
+        query = self.W_Q(query).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        key = self.W_K(key).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
+        value = self.W_V(value).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
         
         # 2) Apply attention on all the projected vectors in parallel
         x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
         
-        # 3) Concatenate the attention heads and apply the final linear layer (use linears[3])
+        # 3) Concatenate heads and apply the final linear layer
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
-        return self.linears[-1](x)  # Final linear layer remains linears[3]
+        return self.final_linear(x)  # Use final_linear instead of linears[3]
+
 
 
 
