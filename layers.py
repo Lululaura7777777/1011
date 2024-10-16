@@ -79,8 +79,6 @@ def attention(query, key, value, mask=None, dropout=None):
     # Apply the mask if present
     if mask is not None:
         if mask.dim() == 2:
-            mask = mask.unsqueeze(1).unsqueeze(2)  # Expand for attention mechanism
-        elif mask.dim() == 3:
             mask = mask.unsqueeze(1)
         scores = scores.masked_fill(mask == 0, -1e9)  # Mask padded values
 
