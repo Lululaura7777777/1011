@@ -121,10 +121,10 @@ class MultiHeadedAttention(nn.Module):
         v_s = self.W_V(V).view(batch_size, -1, self.h, self.d_v).transpose(1, 2)  # Project values to d_v
 
         # Apply scaled dot-product attention
-        context, attn = attention(q_s, k_s, v_s, attn_mask)
+        context, attention_weights = attention(q_s, k_s, v_s, attn_mask)
 
         # Save the attention weights for later use
-        self.attn = attn
+        self.attn = attention_weights
 
         # Concatenate heads and apply the final linear projection
         context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_v)
