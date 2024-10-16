@@ -90,9 +90,6 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
 
 
 def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, end_idx):
-    """
-    Beam search decoding with 'beam_size' width.
-    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Encode the source input using the model
@@ -104,13 +101,14 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     ys = torch.ones(beam_size, 1).fill_(start_symbol).type(torch.long).to(device)
     scores = torch.zeros(beam_size).to(device)  # Scores for all beams
 
-    # Prepare memory for beam_size; expand memory to match beam_size
-    memory = memory.expand(beam_size, -1, -1)
-
     finished = [False] * beam_size
     sequences = [ys.clone() for _ in range(beam_size)]  # Sequences for each beam
 
     for i in range(max_len - 1):
+        if i == 0:  # Expand memory and src_mask for beam size
+            memory = memory.expand(beam_size, -1, -1)
+            src_mask = src_mask.expand(beam_size, -1, -1)
+    
         tgt_mask = subsequent_mask(ys.size(1)).type_as(src.data).to(device)
         out = model.decode(memory, src_mask, torch.cat(sequences, dim=0).to(device), tgt_mask)
 
@@ -122,10 +120,6 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
             next_word = next_word.data[0].item()
             ys = torch.cat([ys, torch.ones(1, 1).type_as(ys).fill_(next_word)], dim=1)
             continue
-
-        # Expand scores during the first iteration to match the number of beams
-        if i == 0:
-            scores = scores.expand(beam_size).to(device)
 
         # Add the previous scores to the current token log-probabilities
         prob = prob + scores.view(beam_size, 1)
@@ -161,6 +155,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
     best_sequence = sequences[scores.argmax().item()].squeeze(0).tolist()
 
     return best_sequence
+
 
 
 
