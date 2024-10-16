@@ -107,6 +107,7 @@ class MultiHeadedAttention(nn.Module):
         self.W_V = nn.Linear(d_model, d_model)
         self.final_linear = nn.Linear(d_model, d_model)  # Final linear layer
         self.dropout = nn.Dropout(p=dropout)
+        self.norm = nn.LayerNorm(d_model)  # LayerNorm added for normalization
 
     def forward(self, query, key, value, mask=None):
         if mask is not None:
@@ -127,11 +128,10 @@ class MultiHeadedAttention(nn.Module):
         
         # 3) Concatenate heads and apply the final linear layer
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
-        return self.final_linear(x)  # Use final_linear instead of linears[3]
-
-
-
-
+        output = self.final_linear(x)
+        
+        # 4) Apply residual connection and normalization
+        return self.norm(output + query)  # Residual connection: adding input query
 
     
     
