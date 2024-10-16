@@ -108,8 +108,6 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol, beam_size, e
         if i == 0:  # Expand memory and src_mask for beam size
             memory = memory.expand(beam_size, -1, -1)
             src_mask = src_mask.expand(beam_size, -1, -1)
-            value = value.expand(beam_size, -1, -1)  # Ensure value matches beam size
-
     
         tgt_mask = subsequent_mask(ys.size(1)).type_as(src.data).to(device)
         out = model.decode(memory, src_mask, torch.cat(sequences, dim=0).to(device), tgt_mask)
