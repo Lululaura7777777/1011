@@ -78,8 +78,12 @@ def attention(query, key, value, mask=None, dropout=None):
 
     # Apply mask if present
     if mask is not None:
-        if mask.dim() == 2:  # If 2D (batch, seq_len), add an extra dimension
-            mask = mask.unsqueeze(1)
+        # Expand the mask to match the dimensions of scores
+        # If mask is 2D (batch, seq_len), expand dimensions for broadcasting
+        if mask.dim() == 2:
+            mask = mask.unsqueeze(1).unsqueeze(2)  # Expand for batch and heads
+        elif mask.dim() == 3:
+            mask = mask.unsqueeze(1)  # Add head dimension
         scores = scores.masked_fill(mask == 0, -1e9)
 
     # Softmax to get attention weights
