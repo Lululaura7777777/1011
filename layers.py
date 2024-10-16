@@ -80,7 +80,11 @@ def attention(query, key, value, mask=None, dropout=None):
     if mask is not None:
         if mask.dim() == 2:
             mask = mask.unsqueeze(1)
-        scores = scores.masked_fill(mask == 0, -1e9)  # Mask padded values
+        print(f"Mask shape: {mask.shape}")
+        print(f"Scores before masking: {scores}")
+        scores = scores.masked_fill(mask == 0, -1e9)
+        print(f"Scores after masking: {scores}")
+         # Mask padded values
 
     # Softmax and attention weights
     attention_weights = F.softmax(scores, dim=-1)
