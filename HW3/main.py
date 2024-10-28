@@ -37,17 +37,26 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     model.train()
     progress_bar = tqdm(range(num_training_steps))
 
-    ################################
-    ##### YOUR CODE BEGINGS HERE ###
-
-    # Implement the training loop --- make sure to use the optimizer and lr_sceduler (learning rate scheduler)
-    # Remember that pytorch uses gradient accumumlation so you need to use zero_grad (https://pytorch.org/tutorials/recipes/recipes/zeroing_out_gradients.html)
-    # You can use progress_bar.update(1) to see the progress during training
-    # You can refer to the pytorch tutorial covered in class for reference
-
-    raise NotImplementedError
-
-    ##### YOUR CODE ENDS HERE ######
+    for epoch in range(num_epochs):
+        for batch in train_dataloader:
+            # Move input tensors to the same device as the model (usually GPU)
+            batch = {k: v.to(model.device) for k, v in batch.items()}
+            
+            # Forward pass
+            outputs = model(**batch)
+            loss = outputs.loss
+            
+            # Backward pass
+            loss.backward()
+            
+            # Optimizer and scheduler step
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()  # Clear gradients for next step
+            
+            # Update progress
+            progress_bar.update(1)
+            progress_bar.set_postfix(loss=loss.item())
 
     print("Training completed...")
     print("Saving Model....")
