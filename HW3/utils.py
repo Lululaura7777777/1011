@@ -35,36 +35,54 @@ def example_transform(example):
 
 
 def custom_transform(example):
-    # Tokenize the text into words
     words = word_tokenize(example["text"])
     transformed_words = []
 
+    # Dictionary for formal replacements
+    informal_to_formal = {
+        "awesome": "impressive",
+        "cool": "excellent",
+        "best": "greatest",
+        "movie": "film",
+        "amazing": "incredible",
+    }
+
     for word in words:
-        if random.random() < 0.2:
+        # Randomly decide if we should transform this word
+        if random.random() < 0.3:
+            # 50% chance of synonym replacement
             if random.random() < 0.5:
                 synsets = wordnet.synsets(word)
                 if synsets:
-                    synonyms = synsets[0].lemma_names()  
+                    synonyms = synsets[0].lemma_names()
                     if synonyms:
-                        synonym = random.choice(synonyms)  
+                        synonym = random.choice(synonyms)
                         transformed_words.append(synonym)
                     else:
-                        transformed_words.append(word)  
+                        transformed_words.append(word)
                 else:
-                    transformed_words.append(word)  
+                    transformed_words.append(word)
+
+            # 50% chance of typo introduction
             else:
                 if len(word) > 1:
                     typo_word = list(word)
-                    random_idx = random.randint(0, len(word) - 1) 
+                    random_idx = random.randint(0, len(word) - 1)
                     typo_replacements = {'a': 's', 'e': 'r', 'i': 'o', 'o': 'i', 'u': 'y'}
                     typo_word[random_idx] = typo_replacements.get(word[random_idx], word[random_idx])
                     transformed_words.append("".join(typo_word))
                 else:
-                    transformed_words.append(word)  
+                    transformed_words.append(word)
+        
+        # Formalization based on predefined dictionary
+        elif word.lower() in informal_to_formal:
+            transformed_words.append(informal_to_formal[word.lower()])
+        
+        # If no transformation, add the word as it is
         else:
             transformed_words.append(word)
 
-    # Detokenize the transformed words back into a string
+    # Detokenize the list of words into a single string
     example["text"] = TreebankWordDetokenizer().detokenize(transformed_words)
     return example
 
