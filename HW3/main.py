@@ -112,11 +112,16 @@ def create_augmented_dataloader(args, dataset):
     # Step 2: Apply the transformation to these 5,000 examples
     transformed_dataset = random_transformed_dataset.map(custom_transform, load_from_cache_file=False)
     
-    # Step 3: Convert both the original and transformed datasets to PyTorch tensors
-    dataset["train"].set_format("torch")
-    transformed_dataset.set_format("torch")
+    # Step 3: Convert labels in both datasets to long tensors
+    def convert_labels(example):
+        example["labels"] = torch.tensor(np.asarray(example["labels"]).astype('long'))
+        return example
     
-    # Step 4: Concatenate the transformed examples with the original training dataset
+    # Apply conversion to the datasets
+    dataset["train"] = dataset["train"].map(convert_labels, load_from_cache_file=False)
+    transformed_dataset = transformed_dataset.map(convert_labels, load_from_cache_file=False)
+    
+    # Step 4: Combine the transformed examples with the original training dataset
     combined_data = dataset["train"] + transformed_dataset
     
     # Step 5: Create a DataLoader for the combined dataset
@@ -138,19 +143,28 @@ def create_transformed_dataloader(args, dataset, debug_transformation):
             print("Transformed Example ", str(k))
             print(small_transformed_dataset[k])
             print('=' * 30)
-
         exit()
 
+    # Apply transformation and tokenization to the test set
     transformed_dataset = dataset["test"].map(custom_transform, load_from_cache_file=False)
     transformed_tokenized_dataset = transformed_dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
     transformed_tokenized_dataset = transformed_tokenized_dataset.remove_columns(["text"])
     transformed_tokenized_dataset = transformed_tokenized_dataset.rename_column("label", "labels")
+    
+    # Convert labels to long tensors
+    def convert_labels(example):
+        example["labels"] = torch.tensor(np.asarray(example["labels"]).astype('long'))
+        return example
+    
+    # Apply conversion to transformed dataset
+    transformed_tokenized_dataset = transformed_tokenized_dataset.map(convert_labels, load_from_cache_file=False)
     transformed_tokenized_dataset.set_format("torch")
 
-    transformed_val_dataset = transformed_tokenized_dataset
-    eval_dataloader = DataLoader(transformed_val_dataset, batch_size=args.batch_size)
+    # Create DataLoader for transformed validation data
+    eval_dataloader = DataLoader(transformed_tokenized_dataset, batch_size=args.batch_size)
 
     return eval_dataloader
+
 
 
 if __name__ == "__main__":
