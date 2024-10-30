@@ -86,11 +86,6 @@ def do_eval(eval_dataloader, model_dir, device, out_file):
 
     return metric.compute()
 
-# Custom transformation for augmentation
-def custom_transform(example):
-    # Your transformation code goes here
-    return example
-
 # Create augmented dataloader
 def create_augmented_dataloader(args, dataset):
     random_transformed_dataset = dataset["train"].shuffle(seed=42).select(range(5000))
