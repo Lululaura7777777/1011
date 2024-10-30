@@ -27,43 +27,28 @@ def tokenize_function(examples):
 
 
 # Core training function
-def do_train(args, model, train_dataloader, save_dir="./out"):
-    optimizer = AdamW(model.parameters(), lr=args.learning_rate)
-    num_epochs = args.num_epochs
-    num_training_steps = num_epochs * len(train_dataloader)
-    lr_scheduler = get_scheduler(
-        name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
-    )
-    model.train()
-    progress_bar = tqdm(range(num_training_steps))
+def do_eval(eval_dataloader, output_dir, out_file):
+    model = AutoModelForSequenceClassification.from_pretrained(output_dir)
+    model.to(device)  # Ensure device is accessible here
+    model.eval()
 
-    for epoch in range(num_epochs):
-        for batch in train_dataloader:
-            # Move input tensors to the same device as the model (usually GPU)
-            batch = {k: v.to(model.device) for k, v in batch.items()}
-            
-            # Forward pass
-            outputs = model(**batch)
-            loss = outputs.loss
-            
-            # Backward pass
-            loss.backward()
-            
-            # Optimizer and scheduler step
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()  # Clear gradients for next step
-            
-            # Update progress
-            progress_bar.update(1)
-            progress_bar.set_postfix(loss=loss.item())
+    metric = evaluate.load("accuracy")
+    os.makedirs(os.path.dirname(out_file), exist_ok=True)  # Ensure output path exists
+    with open(out_file, "w") as f:
+        for batch in tqdm(eval_dataloader):
+            batch = {k: v.to(device) for k, v in batch.items()}
+            with torch.no_grad():
+                outputs = model(**batch)
 
-    print("Training completed...")
-    print("Saving Model....")
-    model.save_pretrained(save_dir)
+            logits = outputs.logits
+            predictions = torch.argmax(logits, dim=-1)
+            metric.add_batch(predictions=predictions, references=batch["labels"])
 
-    return
+            for pred, label in zip(predictions, batch["labels"]):
+                f.write(f"{pred.item()}\n{label.item()}\n")
 
+    score = metric.compute()
+    return score
 
 # Core evaluation function
 def do_eval(eval_dataloader, output_dir, out_file):
