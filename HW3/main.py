@@ -2,7 +2,6 @@ import datasets
 from datasets import load_dataset
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
 from transformers import AutoTokenizer
-from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification
 from torch.optim import AdamW
 from transformers import get_scheduler
