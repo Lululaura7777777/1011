@@ -103,17 +103,18 @@ def do_eval(eval_dataloader, output_dir, out_file):
 
 # Created a dataladoer for the augmented training dataset
 def create_augmented_dataloader(args, dataset):
-    ################################
-    ##### YOUR CODE BEGINGS HERE ###
-
-    # Here, 'dataset' is the original dataset. You should return a dataloader called 'train_dataloader' -- this
-    # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
-    # You may find it helpful to see how the dataloader was created at other place in this code.
-
-    raise NotImplementedError
-
-    ##### YOUR CODE ENDS HERE ######
-
+    # Step 1: Select 5,000 random examples from the original training set
+    random_transformed_dataset = dataset["train"].shuffle(seed=42).select(range(5000))
+    
+    # Step 2: Apply the transformation to these 5,000 examples
+    transformed_dataset = random_transformed_dataset.map(custom_transform, load_from_cache_file=False)
+    
+    # Step 3: Combine the transformed examples with the original training dataset
+    combined_dataset = ConcatDataset([dataset["train"], transformed_dataset])
+    
+    # Step 4: Create a DataLoader for the combined dataset
+    train_dataloader = DataLoader(combined_dataset, shuffle=True, batch_size=args.batch_size)
+    
     return train_dataloader
 
 
