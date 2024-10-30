@@ -112,11 +112,15 @@ def create_augmented_dataloader(args, dataset):
     # Step 2: Apply the transformation to these 5,000 examples
     transformed_dataset = random_transformed_dataset.map(custom_transform, load_from_cache_file=False)
     
-    # Step 3: Combine the transformed examples with the original training dataset
-    combined_dataset = ConcatDataset([dataset["train"], transformed_dataset])
+    # Step 3: Convert both the original and transformed datasets to PyTorch tensors
+    dataset["train"].set_format("torch")
+    transformed_dataset.set_format("torch")
     
-    # Step 4: Create a DataLoader for the combined dataset
-    train_dataloader = DataLoader(combined_dataset, shuffle=True, batch_size=args.batch_size)
+    # Step 4: Concatenate the transformed examples with the original training dataset
+    combined_data = dataset["train"] + transformed_dataset
+    
+    # Step 5: Create a DataLoader for the combined dataset
+    train_dataloader = DataLoader(combined_data, shuffle=True, batch_size=args.batch_size)
     
     return train_dataloader
 
