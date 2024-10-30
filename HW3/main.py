@@ -15,6 +15,7 @@ import random
 import argparse
 from utils import *
 import os
+import numpy as np
 
 # Set seed
 random.seed(0)
