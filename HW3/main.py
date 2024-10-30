@@ -39,7 +39,8 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     )
     model.train()
     progress_bar = tqdm(range(num_training_steps))
-
+    model.to(args.device)
+    
     for epoch in range(num_epochs):
         for batch in train_dataloader:
             batch = {k: v.to(args.device) for k, v in batch.items()}  # Move to device
