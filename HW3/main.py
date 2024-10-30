@@ -39,11 +39,11 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     )
     model.train()
     progress_bar = tqdm(range(num_training_steps))
-    model.to(args.device)
+    model.to(torch.device("cuda"))
     
     for epoch in range(num_epochs):
         for batch in train_dataloader:
-            batch = {k: v.to(args.device) for k, v in batch.items()}  # Move to device
+            batch = {k: v.to(torch.device("cuda")) for k, v in batch.items()}  # Move to device
             
             # Forward pass
             outputs = model(**batch)
