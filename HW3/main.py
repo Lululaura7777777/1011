@@ -156,7 +156,15 @@ def create_transformed_dataloader(args, dataset, debug_transformation):
     transformed_dataset = dataset["test"].map(custom_transform, load_from_cache_file=False)
     transformed_tokenized_dataset = transformed_dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
     transformed_tokenized_dataset = transformed_tokenized_dataset.remove_columns(["text"])
-    transformed_tokenized_dataset = transformed_tokenized_dataset.rename_column("label", "labels")
+    
+    # Rename "label" to "labels" if needed
+    if "label" in transformed_tokenized_dataset.column_names:
+        transformed_tokenized_dataset = transformed_tokenized_dataset.rename_column("label", "labels")
+    
+    # Convert labels to long tensors
+    def convert_labels(example):
+        example["labels"] = torch.tensor(np.asarray(example["labels"]).astype('long'))
+        return example
     
     # Apply conversion to transformed dataset
     transformed_tokenized_dataset = transformed_tokenized_dataset.map(convert_labels, load_from_cache_file=False)
