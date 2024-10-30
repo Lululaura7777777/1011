@@ -40,34 +40,28 @@ def custom_transform(example):
     transformed_words = []
 
     for word in words:
-        # 随机选择是否对该词进行转换（例如，20%的概率）
         if random.random() < 0.2:
-            # 随机选择进行同义词替换或拼写错误
             if random.random() < 0.5:
-                # 同义词替换
                 synsets = wordnet.synsets(word)
                 if synsets:
-                    synonyms = synsets[0].lemma_names()  # 获取同义词
+                    synonyms = synsets[0].lemma_names()  
                     if synonyms:
-                        synonym = random.choice(synonyms)  # 随机选择一个同义词
+                        synonym = random.choice(synonyms)  
                         transformed_words.append(synonym)
                     else:
-                        transformed_words.append(word)  # 没有同义词，保留原词
+                        transformed_words.append(word)  
                 else:
-                    transformed_words.append(word)  # 没有找到同义词，保留原词
+                    transformed_words.append(word)  
             else:
-                # 拼写错误模拟
                 if len(word) > 1:
                     typo_word = list(word)
-                    random_idx = random.randint(0, len(word) - 1)  # 随机选择一个字符
-                    # 用键盘相邻字符代替 (简单示例，仅适用于少数字母)
+                    random_idx = random.randint(0, len(word) - 1) 
                     typo_replacements = {'a': 's', 'e': 'r', 'i': 'o', 'o': 'i', 'u': 'y'}
                     typo_word[random_idx] = typo_replacements.get(word[random_idx], word[random_idx])
                     transformed_words.append("".join(typo_word))
                 else:
-                    transformed_words.append(word)  # 单字符不改变
+                    transformed_words.append(word)  
         else:
-            # 不进行转换
             transformed_words.append(word)
 
     # Detokenize the transformed words back into a string
