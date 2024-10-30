@@ -35,7 +35,13 @@ def example_transform(example):
 
 
 def custom_transform(example):
-    words = word_tokenize(example["text"])
+    # Check if "text" key exists, otherwise use an alternative key (if applicable)
+    text = example.get("text", "")
+    
+    if not text:  # If no text is found, return example as-is to avoid KeyError
+        return example
+
+    words = word_tokenize(text)
     new_words = []
 
     for word in words:
@@ -43,14 +49,13 @@ def custom_transform(example):
         if random.random() < 0.3:
             synonyms = wordnet.synsets(word)
             if synonyms:
-                # Pick a random synonym lemma
                 synonym = synonyms[0].lemmas()[0].name()
-                if synonym.lower() != word.lower():  # Avoid replacement if synonym is the same as word
+                if synonym.lower() != word.lower():
                     word = synonym
 
         # Introduce a minor typo with a 20% chance
         if random.random() < 0.2:
-            if len(word) > 2:  # Only introduce typos in words with more than 2 characters
+            if len(word) > 2:
                 typo_index = random.randint(0, len(word) - 1)
                 typo_char = random.choice('abcdefghijklmnopqrstuvwxyz')
                 word = word[:typo_index] + typo_char + word[typo_index + 1:]
@@ -60,4 +65,3 @@ def custom_transform(example):
     transformed_text = TreebankWordDetokenizer().detokenize(new_words)
     example["text"] = transformed_text
     return example
-
