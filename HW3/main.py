@@ -106,6 +106,8 @@ def do_eval(eval_dataloader, output_dir, out_file):
 
 
 # Created a dataladoer for the augmented training dataset
+from datasets import concatenate_datasets
+
 def create_augmented_dataloader(args, dataset):
     # Step 1: Select 5,000 random examples from the original training set
     random_transformed_dataset = dataset["train"].shuffle(seed=42).select(range(5000))
@@ -119,22 +121,14 @@ def create_augmented_dataloader(args, dataset):
     if "label" in transformed_dataset.column_names:
         transformed_dataset = transformed_dataset.rename_column("label", "labels")
     
-    # Step 4: Convert labels to long tensors
-    def convert_labels(example):
-        example["labels"] = torch.tensor(np.asarray(example["labels"]).astype('long'))
-        return example
+    # Step 4: Concatenate the transformed examples with the original training dataset
+    combined_dataset = concatenate_datasets([dataset["train"], transformed_dataset])
     
-    # Apply conversion to the datasets
-    dataset["train"] = dataset["train"].map(convert_labels, load_from_cache_file=False)
-    transformed_dataset = transformed_dataset.map(convert_labels, load_from_cache_file=False)
-    
-    # Step 5: Combine the transformed examples with the original training dataset
-    combined_data = dataset["train"] + transformed_dataset
-    
-    # Step 6: Create a DataLoader for the combined dataset
-    train_dataloader = DataLoader(combined_data, shuffle=True, batch_size=args.batch_size)
+    # Step 5: Create a DataLoader for the combined dataset
+    train_dataloader = DataLoader(combined_dataset, shuffle=True, batch_size=args.batch_size)
     
     return train_dataloader
+
 
 
 # Create a dataloader for the transformed test set
