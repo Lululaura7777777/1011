@@ -32,15 +32,17 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     num_epochs = args.num_epochs
     num_training_steps = num_epochs * len(train_dataloader)
     lr_scheduler = get_scheduler(
-        name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
+        name="linear", 
+        optimizer=optimizer, 
+        num_warmup_steps=int(0.1 * num_training_steps),  # Warm-up for 10% of steps
+        num_training_steps=num_training_steps
     )
     model.train()
     progress_bar = tqdm(range(num_training_steps))
 
     for epoch in range(num_epochs):
         for batch in train_dataloader:
-            # Move input tensors to the same device as the model (usually GPU)
-            batch = {k: v.to(model.device) for k, v in batch.items()}
+            batch = {k: v.to(args.device) for k, v in batch.items()}  # Move to device
             
             # Forward pass
             outputs = model(**batch)
@@ -49,10 +51,15 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
             # Backward pass
             loss.backward()
             
-            # Optimizer and scheduler step
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
+            # Optimizer step and learning rate scheduler step
             optimizer.step()
             lr_scheduler.step()
-            optimizer.zero_grad()  # Clear gradients for next step
+            
+            # Zero out gradients for the next step
+            optimizer.zero_grad()
             
             # Update progress
             progress_bar.update(1)
