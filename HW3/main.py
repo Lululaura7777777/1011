@@ -154,7 +154,7 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 
     # Tokenize the dataset
-    dataset = load_dataset("imdb", "plain_text", download_mode="force_redownload")
+    dataset = load_dataset("imdb", split='train+test', download_mode="force_redownload")  # Adjusted loading method
 
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
 
