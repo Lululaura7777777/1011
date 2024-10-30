@@ -36,18 +36,20 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     num_epochs = args.num_epochs
     num_training_steps = num_epochs * len(train_dataloader)
     lr_scheduler = get_scheduler(
-        name="linear", 
-        optimizer=optimizer, 
-        num_warmup_steps=int(0.1 * num_training_steps),  # Warm-up for 10% of steps
-        num_training_steps=num_training_steps
+        name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
     )
     model.train()
+    model.to(args.device)  # Ensure model is on the correct device
     progress_bar = tqdm(range(num_training_steps))
-    model.to(torch.device("cuda"))
-    
+
     for epoch in range(num_epochs):
         for batch in train_dataloader:
-            batch = {k: v.to(torch.device("cuda")) for k, v in batch.items()}  # Move to device
+            # Check if batch elements are lists, and convert to tensors if needed
+            if isinstance(batch, list):
+                batch = {k: torch.tensor(v).to(args.device) for k, v in batch.items()}
+            else:
+                # Move batch elements to the device
+                batch = {k: v.to(args.device) for k, v in batch.items()}
             
             # Forward pass
             outputs = model(**batch)
@@ -56,15 +58,10 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
             # Backward pass
             loss.backward()
             
-            # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            
-            # Optimizer step and learning rate scheduler step
+            # Optimizer and scheduler step
             optimizer.step()
             lr_scheduler.step()
-            
-            # Zero out gradients for the next step
-            optimizer.zero_grad()
+            optimizer.zero_grad()  # Clear gradients for next step
             
             # Update progress
             progress_bar.update(1)
@@ -75,6 +72,7 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     model.save_pretrained(save_dir)
 
     return
+
 
 
 # Core evaluation function
