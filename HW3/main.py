@@ -99,13 +99,10 @@ def create_augmented_dataloader(args, dataset):
     ##### YOUR CODE BEGINGS HERE ###
     augmented_dataset = dataset["train"].shuffle(seed=42).select(range(5000))
     
-    # Step 2: 对这 5000 个样本应用自定义的增强函数
     augmented_dataset = augmented_dataset.map(custom_transform, load_from_cache_file=False)
     
-    # Step 3: 将增强后的数据集和原始训练数据集合并
     combined_dataset = ConcatDataset([dataset["train"], augmented_dataset])
     
-    # Step 4: 创建数据加载器
     train_dataloader = DataLoader(combined_dataset, shuffle=True, batch_size=args.batch_size)
 
     ##### YOUR CODE ENDS HERE ######
@@ -171,7 +168,7 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 
     # Tokenize the dataset
-    dataset = load_dataset("imdb", "plain_text", download_mode="force_redownload")
+    dataset = load_dataset("imdb", "plain_text")
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
 
     # Prepare dataset for use by model
