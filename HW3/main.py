@@ -23,8 +23,15 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 
 # Tokenization function
 def tokenize_function(examples):
-    text_key = "text" if "text" in examples else "sentence"  # Adjust as needed based on dataset inspection
+    if "text" in examples:
+        text_key = "text"
+    elif "sentence" in examples:
+        text_key = "sentence"
+    else:
+        raise KeyError("Neither 'text' nor 'sentence' found in dataset examples. Please check the dataset structure.")
+    
     return tokenizer(examples[text_key], padding="max_length", truncation=True)
+
 
 
 # Core training function
