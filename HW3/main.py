@@ -1,13 +1,11 @@
 import datasets
 from datasets import load_dataset
-from torch.utils.data import ConcatDataset
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
-from torch.utils.data import random_split
 from transformers import AutoTokenizer
+from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification
 from torch.optim import AdamW
 from transformers import get_scheduler
+from transformers import BertTokenizer
 import torch
 from tqdm.auto import tqdm
 import evaluate
@@ -15,7 +13,6 @@ import random
 import argparse
 from utils import *
 import os
-import numpy as np
 
 # Set seed
 random.seed(0)
@@ -32,22 +29,23 @@ def tokenize_function(examples):
 
 # Core training function
 def do_train(args, model, train_dataloader, save_dir="./out"):
+    ################################
+    ##### YOUR CODE BEGINGS HERE ###
+    args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
     num_epochs = args.num_epochs
     num_training_steps = num_epochs * len(train_dataloader)
     lr_scheduler = get_scheduler(
-        name="linear", 
-        optimizer=optimizer, 
-        num_warmup_steps=int(0.1 * num_training_steps),  # Warm-up for 10% of steps
-        num_training_steps=num_training_steps
+        name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
     )
     model.train()
     progress_bar = tqdm(range(num_training_steps))
-    model.to(torch.device("cuda"))
+    model.to(args.device)
 
     for epoch in range(num_epochs):
         for batch in train_dataloader:
-            batch = {k: v.to(torch.device("cuda")) for k, v in batch.items()}  # Move to device
+            # Move batch to the device
+            batch = {k: v.to(args.device) for k, v in batch.items()}
 
             # Forward pass
             outputs = model(**batch)
@@ -56,19 +54,22 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
             # Backward pass
             loss.backward()
 
-            # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
-            # Optimizer step and learning rate scheduler step
+            # Optimizer step
             optimizer.step()
+
+            # Learning rate scheduler step
             lr_scheduler.step()
 
-            # Zero out gradients for the next step
+            # Zero out gradients for the next iteration
             optimizer.zero_grad()
 
-            # Update progress
+            # Update progress bar
             progress_bar.update(1)
-            progress_bar.set_postfix(loss=loss.item())
+    # Implement the training loop --- make sure to use the optimizer and lr_sceduler (learning rate scheduler)
+    # Remember that pytorch uses gradient accumumlation so you need to use zero_grad (https://pytorch.org/tutorials/recipes/recipes/zeroing_out_gradients.html)
+    # You can use progress_bar.update(1) to see the progress during training
+    # You can refer to the pytorch tutorial covered in class for reference
+    ##### YOUR CODE ENDS HERE ######
 
     print("Training completed...")
     print("Saving Model....")
@@ -106,26 +107,32 @@ def do_eval(eval_dataloader, output_dir, out_file):
 
 
 # Created a dataladoer for the augmented training dataset
-def create_augmented_dataloader(args, dataset):
+def create_augmented_dataloader(args, dataset, batch_size=16):
     # Step 1: Select 5,000 random examples from the original training set
-    random_transformed_dataset = dataset["train"].shuffle(seed=42).select(range(5000))
-    
-    # Step 2: Apply the custom transformation to these 5,000 examples
-    transformed_dataset = random_transformed_dataset.map(custom_transform, load_from_cache_file=False)
-    
-    # Step 3: Ensure that labels are correctly named as "labels"
+    original_train_dataset = dataset["train"].shuffle(seed=42).select(range(5000))
+
+    # Step 2: Apply custom transformations to create augmented examples
+    augmented_dataset = original_train_dataset.map(custom_transform, load_from_cache_file=False)
+
+    # Ensure column names are consistent between original and augmented datasets
+    if "label" in augmented_dataset.column_names:
+        augmented_dataset = augmented_dataset.rename_column("label", "labels")
     if "label" in dataset["train"].column_names:
         dataset["train"] = dataset["train"].rename_column("label", "labels")
-    if "label" in transformed_dataset.column_names:
-        transformed_dataset = transformed_dataset.rename_column("label", "labels")
-    
-    # Step 4: Concatenate the transformed examples with the original training dataset
-    combined_dataset = concatenate_datasets([dataset["train"], transformed_dataset])
-    
-    # Step 5: Create a DataLoader for the combined dataset
-    train_dataloader = DataLoader(combined_dataset, shuffle=True, batch_size=args.batch_size)
-    
+
+    # Step 3: Concatenate the augmented examples with the full original training dataset
+    combined_dataset = datasets.concatenate_datasets([dataset["train"], augmented_dataset])
+
+    # Step 4: Tokenize combined dataset
+    combined_tokenized = combined_dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
+    combined_tokenized = combined_tokenized.remove_columns(["text"])
+    combined_tokenized.set_format("torch")
+
+    # Step 5: Create DataLoader
+    train_dataloader = DataLoader(combined_tokenized, batch_size=batch_size, shuffle=True)
+
     return train_dataloader
+
 
 
 # Create a dataloader for the transformed test set
@@ -141,28 +148,19 @@ def create_transformed_dataloader(args, dataset, debug_transformation):
             print("Transformed Example ", str(k))
             print(small_transformed_dataset[k])
             print('=' * 30)
+
         exit()
 
-    # Apply transformation and tokenization to the test set
     transformed_dataset = dataset["test"].map(custom_transform, load_from_cache_file=False)
     transformed_tokenized_dataset = transformed_dataset.map(tokenize_function, batched=True, load_from_cache_file=False)
     transformed_tokenized_dataset = transformed_tokenized_dataset.remove_columns(["text"])
     transformed_tokenized_dataset = transformed_tokenized_dataset.rename_column("label", "labels")
-
-    # Convert labels to long tensors
-    def convert_labels(example):
-        example["labels"] = torch.tensor(np.asarray(example["labels"]).astype('long'))
-        return example
-
-    # Apply conversion to transformed dataset
-    transformed_tokenized_dataset = transformed_tokenized_dataset.map(convert_labels, load_from_cache_file=False)
     transformed_tokenized_dataset.set_format("torch")
 
-    # Create DataLoader for transformed validation data
-    eval_dataloader = DataLoader(transformed_tokenized_dataset, batch_size=args.batch_size)
+    transformed_val_dataset = transformed_tokenized_dataset
+    eval_dataloader = DataLoader(transformed_val_dataset, batch_size=args.batch_size)
 
     return eval_dataloader
-
 
 
 if __name__ == "__main__":
