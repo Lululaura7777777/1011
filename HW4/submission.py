@@ -8,7 +8,7 @@ import re
 
 # api key for query. see https://docs.together.ai/docs/get-started
 def your_api_key():
-    YOUR_API_KEY = 'YOUR_API_KEY'
+    YOUR_API_KEY = '6ec68c697088fb6476be8aa77f7574b01df701428c3d8a07e2c8c2c0b4213869'
     return YOUR_API_KEY
 
 
