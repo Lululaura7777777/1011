@@ -34,7 +34,7 @@ def get_addition_pairs(lower_bound, upper_bound, rng):
 def call_together_api(prompt, student_configs, post_processing):
     output = together.Complete.create(
     prompt = prompt,
-    model = "togethercomputer/llama-2-7b", 
+    model = "meta-llama/Llama-2-7b-chat-hf", 
     **student_configs
     )
     print('*****prompt*****')
