@@ -1,0 +1,23 @@
+import numpy as np
+
+def recover_hidden_dimension(oracle, max_attempts=100):
+    # Step 1: Initialize list to store logits
+    logits_list = []
+
+    # Step 2: Generate prompts and query oracle
+    for i in range(max_attempts):
+        prompt = generate_random_prompt()  # Generate a new prompt
+        logits = oracle(prompt)            # Query oracle to get logits
+        logits_list.append(logits)         # Store logits
+
+        # Step 3: Form matrix Z
+        Z = np.column_stack(logits_list)   # Stack logits vectors as columns
+
+        # Step 4: Compute the rank of matrix Z
+        rank = np.linalg.matrix_rank(Z)
+
+        # Step 5: If rank stops increasing, return rank as hidden dimension
+        if rank < len(logits_list):
+            return rank
+
+    return rank  # Return the rank after max_attempts
